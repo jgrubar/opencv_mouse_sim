@@ -1,1 +1,1 @@
-# opencv_mouse_sim
+finger detection with opencv
