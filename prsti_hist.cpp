@@ -224,6 +224,12 @@ Mat get_hand_contour(Mat img){
 	//defekti
 	vector<Vec4i> defects;
 	convexityDefects(Mat(contours[biggest_contour_index]), hull_ints, defects);
+	
+	//bounding box za center
+	Rect bounding_box = boundingRect(hull_points);
+  	rectangle(contours_img, bounding_box, Scalar(255, 0, 0));
+  	Point center = Point(bounding_box.x + bounding_box.width / 2, bounding_box.y + bounding_box.height / 2);
+
 	for (size_t i = 0; i < defects.size(); i++){
 		Point p1 = contours[biggest_contour_index][defects[i][0]];
 		Point p2 = contours[biggest_contour_index][defects[i][1]];
@@ -237,9 +243,7 @@ Mat get_hand_contour(Mat img){
 		circle(contours_img,contours[biggest_contour_index][defects[i][0]],20,Scalar(0,0,255),1);
 	}
 
-
-
-
+	
 	drawContours(contours_img, contours, biggest_contour_index, Scalar(255,0,0), 2, LINE_8, hierarchy, 0);
 	//drawContours(contours_img, vector<vector<Point>> {hull_points}, 0, Scalar(128), 3, 8);
 	drawContours(contours_img, vector<vector<Point>> {hull_points}, 0, Scalar(0,0,255), 3, 8);
@@ -266,7 +270,4 @@ void remove_face(Mat input, Mat output){
 		);
 	}
 	//imshow("OUT",output);
-}
-Mat detect_fingers(Mat input, Mat frame){
-	return input;
 }
