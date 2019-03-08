@@ -19,18 +19,20 @@ void opening_operation(Mat img, int kernel, Point kernel_size);
 Mat get_hand_contour(Mat img);
 void remove_face(Mat input, Mat output);
 Mat detect_fingers(Mat input, Mat frame);
+float inner_angle(float px1, float py1, float px2, float py2, float cx1, float cy1);
 
 //globalne spremenljivke
 vector<Rect>sample_rects;
 Mat vsi_vzorci;
 CascadeClassifier face_cascade;
+int inAngleMin = 20, inAngleMax = 300, angleMin = 180, angleMax = 360, lengthMin = 5, lengthMax = 80;
 
 int main(){
 	
 	VideoCapture cap(0);
 	//cap.set(CAP_PROP_FRAME_WIDTH,640);
 	//cap.set(CAP_PROP_FRAME_HEIGHT,480);
-	
+
 	face_cascade.load("haarcascade_frontalface_alt.xml");
 
 	if(!cap.isOpened()){
@@ -168,13 +170,13 @@ Mat mask_with_hist(Mat frame,Mat hist){
 	
 	//imshow("calcback",mask);
 	
-	Mat kernel  = getStructuringElement(MORPH_ELLIPSE,{15,15});
+	Mat kernel  = getStructuringElement(MORPH_ELLIPSE,{8,8});
 	filter2D(mask,mask,-1,kernel,Point(-1,-1));
 	Mat t;
 	threshold(mask,t,150,255,THRESH_BINARY);
 
 	//imshow("pred erode",t);
-	opening_operation(t,MORPH_OPEN,{15,15});
+	opening_operation(t,MORPH_OPEN,{8,8});
 	erode(t,t,Mat(),Point(-1,-1),6);
 	//imshow("po odpiranju THRESH",t);
 	
@@ -229,23 +231,34 @@ Mat get_hand_contour(Mat img){
 	Rect bounding_box = boundingRect(hull_points);
   	rectangle(contours_img, bounding_box, Scalar(255, 0, 0));
   	Point center = Point(bounding_box.x + bounding_box.width / 2, bounding_box.y + bounding_box.height / 2);
-
-	for (size_t i = 0; i < defects.size(); i++){
+	vector<Point> valid_points;
+	
+	//int inAngleMin = 200, inAngleMax = 300, angleMin = 100, angleMax = 360, lengthMin = 10, lengthMax = 80;
+	
+	for(size_t i = 0; i < defects.size(); i++){
 		Point p1 = contours[biggest_contour_index][defects[i][0]];
 		Point p2 = contours[biggest_contour_index][defects[i][1]];
 		Point p3 = contours[biggest_contour_index][defects[i][2]];
 		line(contours_img, p1, p3, Scalar(0, 255, 0), 2);
 		line(contours_img, p3, p2, Scalar(0, 255, 0), 2);
+		double angle = atan2(center.y - p1.y, center.x - p1.x) * 180 / CV_PI;
+		double inAngle = inner_angle(p1.x, p1.y, p2.x, p2.y, p3.x, p3.y);
+		double length = sqrt(pow(p1.x - p3.x, 2) + pow(p1.y - p3.y, 2));
+		if (angle > angleMin - 180 && angle < angleMax - 180 && inAngle > inAngleMin - 180 && inAngle < inAngleMax - 180 && length > lengthMin / 100.0 * bounding_box.height && length < lengthMax / 100.0 * bounding_box.height){
+			valid_points.push_back(p1);
+		}
+
 	}
 	cout << "defekti" << endl;
 	
-	for(int i=0;i<defects.size();i++){
-		circle(contours_img,contours[biggest_contour_index][defects[i][0]],20,Scalar(0,0,255),1);
+	for(int i=0;i<valid_points.size();i++){
+		//circle(contours_img,contours[biggest_contour_index][defects[i][0]],20,Scalar(0,0,255),1);
+		circle(contours_img,valid_points[i],20,Scalar(0,0,255),1);
+
 	}
 
 	
 	drawContours(contours_img, contours, biggest_contour_index, Scalar(255,0,0), 2, LINE_8, hierarchy, 0);
-	//drawContours(contours_img, vector<vector<Point>> {hull_points}, 0, Scalar(128), 3, 8);
 	drawContours(contours_img, vector<vector<Point>> {hull_points}, 0, Scalar(0,0,255), 3, 8);
 
 	return contours_img;
@@ -271,3 +284,47 @@ void remove_face(Mat input, Mat output){
 	}
 	//imshow("OUT",output);
 }
+float inner_angle(float px1, float py1, float px2, float py2, float cx1, float cy1)
+{
+
+ float dist1 = sqrt((px1-cx1)*(px1-cx1) + (py1-cy1)*(py1-cy1));
+ float dist2 = sqrt((px2-cx1)*(px2-cx1) + (py2-cy1)*(py2-cy1));
+
+ float Ax, Ay;
+ float Bx, By;
+ float Cx, Cy;
+
+ //najblizja tocka C
+ //printf("dist = %lf %lf\n", dist1, dist2);
+
+ Cx = cx1;
+ Cy = cy1;
+ if(dist1 < dist2)
+ {
+  Bx = px1;
+  By = py1;
+  Ax = px2;
+  Ay = py2;
+
+
+ }else{
+  Bx = px2;
+  By = py2;
+  Ax = px1;
+  Ay = py1;
+ }
+
+
+ float Q1 = Cx - Ax;
+ float Q2 = Cy - Ay;
+ float P1 = Bx - Ax;
+ float P2 = By - Ay;
+
+
+ float A = acos((P1*Q1 + P2*Q2) / (sqrt(P1*P1+P2*P2) * sqrt(Q1*Q1+Q2*Q2)));
+
+ A = A*180/CV_PI;
+
+ return A;
+}
+
