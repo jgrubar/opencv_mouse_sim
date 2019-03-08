@@ -168,13 +168,13 @@ Mat mask_with_hist(Mat frame,Mat hist){
 	
 	//imshow("calcback",mask);
 	
-	Mat kernel  = getStructuringElement(MORPH_ELLIPSE,{8,8});
+	Mat kernel  = getStructuringElement(MORPH_ELLIPSE,{15,15});
 	filter2D(mask,mask,-1,kernel,Point(-1,-1));
 	Mat t;
 	threshold(mask,t,150,255,THRESH_BINARY);
 
 	//imshow("pred erode",t);
-	opening_operation(t,MORPH_OPEN,{8,8});
+	opening_operation(t,MORPH_OPEN,{15,15});
 	erode(t,t,Mat(),Point(-1,-1),6);
 	//imshow("po odpiranju THRESH",t);
 	
@@ -233,12 +233,9 @@ Mat get_hand_contour(Mat img){
 	}
 	cout << "defekti" << endl;
 	
-	/*----------------------------------------------------------------------	
 	for(int i=0;i<defects.size();i++){
-		cout << defects
-		//circle(contours_img,defects[i],10,Scalar(255,255,0),2);
+		circle(contours_img,contours[biggest_contour_index][defects[i][0]],20,Scalar(0,0,255),1);
 	}
-	--------------------------------------------------------------------------------*/
 
 
 
