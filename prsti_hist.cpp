@@ -1,5 +1,6 @@
 #include <iostream>
 #include <sstream>
+#include <string>
 #include <opencv2/imgcodecs.hpp>
 #include <opencv2/imgproc.hpp>
 #include <opencv2/videoio.hpp>
@@ -26,6 +27,8 @@ vector<Rect>sample_rects;
 Mat vsi_vzorci;
 CascadeClassifier face_cascade;
 int inAngleMin = 20, inAngleMax = 300, angleMin = 180, angleMax = 360, lengthMin = 5, lengthMax = 80;
+int mouse_x, mouse_y;
+string command;
 
 int main(){
 	
@@ -41,6 +44,8 @@ int main(){
 	bool vzorec = false;
 	Mat frame,frame_out,hist,hand_mask,contours;
 	bool prvic=true;
+	srand((unsigned)time(0));
+	bool miska=false;
 	while(true){
 		cap >> frame;
 		frame_out=frame.clone();
@@ -54,6 +59,11 @@ int main(){
 			imshow("handmask",hand_mask);
 			contours = get_hand_contour(hand_mask);
 			imshow("contours",contours);
+			//system("xdotool mousemove mouse_x mouse_y");
+			if(miska){
+				command = "xdotool mousemove "+to_string(mouse_x)+" "+to_string(mouse_y);
+				system(command.c_str());
+			}
 		}
 		int key=waitKey(10);
 		if(key==115){
@@ -75,6 +85,11 @@ int main(){
 				vsi_vzorci.pop_back();
 			}
 
+		}
+		//premakni misko na koordinate
+		if(key==109){
+			//cout << "mouse x: " << mouse_x << "mouse y: " << mouse_y << endl;
+			miska=true;
 		}
 		if(key==113){
 			break;
@@ -134,7 +149,7 @@ Mat hand_histogram(Mat frame){
 		vsi_vzorci.push_back(sample);
 	}
 	//cout << "WIDTH: " << vsi_vzorci.size().width << "HEIGHT: " << vsi_vzorci.size().height << endl;
-	cout << "VZORCI: " << vsi_vzorci.size() << endl;
+	//cout << "VZORCI: " << vsi_vzorci.size() << endl;
 	//vsi_vzorci.release();
 
 	//izracunaj histogram
@@ -170,14 +185,14 @@ Mat mask_with_hist(Mat frame,Mat hist){
 	
 	//imshow("calcback",mask);
 	
-	Mat kernel  = getStructuringElement(MORPH_ELLIPSE,{8,8});
+	Mat kernel  = getStructuringElement(MORPH_ELLIPSE,{15,15});
 	filter2D(mask,mask,-1,kernel,Point(-1,-1));
 	Mat t;
 	threshold(mask,t,150,255,THRESH_BINARY);
 
 	//imshow("pred erode",t);
-	opening_operation(t,MORPH_OPEN,{8,8});
-	erode(t,t,Mat(),Point(-1,-1),6);
+	opening_operation(t,MORPH_OPEN,{15,15});
+	erode(t,t,Mat(),Point(-1,-1),5);
 	//imshow("po odpiranju THRESH",t);
 	
 	Mat mt;
@@ -249,7 +264,9 @@ Mat get_hand_contour(Mat img){
 		}
 
 	}
-	cout << "defekti" << endl;
+	
+	mouse_x=valid_points[1].x;
+	mouse_y=valid_points[1].y;
 	
 	for(int i=0;i<valid_points.size();i++){
 		//circle(contours_img,contours[biggest_contour_index][defects[i][0]],20,Scalar(0,0,255),1);
