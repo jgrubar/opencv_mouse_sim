@@ -26,16 +26,16 @@ float inner_angle(float px1, float py1, float px2, float py2, float cx1, float c
 vector<Rect>sample_rects;
 Mat vsi_vzorci;
 CascadeClassifier face_cascade;
-int inAngleMin = 20, inAngleMax = 300, angleMin = 180, angleMax = 360, lengthMin = 5, lengthMax = 80;
+int inAngleMin = 20, inAngleMax = 300, angleMin = 180, angleMax = 360, lengthMin = 20, lengthMax = 80;
 int mouse_x, mouse_y;
 string command;
+bool miska=false;
 
 int main(){
 	
 	VideoCapture cap(0);
 	//cap.set(CAP_PROP_FRAME_WIDTH,640);
 	//cap.set(CAP_PROP_FRAME_HEIGHT,480);
-
 	face_cascade.load("haarcascade_frontalface_alt.xml");
 
 	if(!cap.isOpened()){
@@ -45,7 +45,6 @@ int main(){
 	Mat frame,frame_out,hist,hand_mask,contours;
 	bool prvic=true;
 	srand((unsigned)time(0));
-	bool miska=false;
 	while(true){
 		cap >> frame;
 		frame_out=frame.clone();
@@ -89,7 +88,7 @@ int main(){
 		//premakni misko na koordinate
 		if(key==109){
 			//cout << "mouse x: " << mouse_x << "mouse y: " << mouse_y << endl;
-			miska=true;
+			miska=!miska;
 		}
 		if(key==113){
 			break;
@@ -116,9 +115,12 @@ void draw_refernce_area(Mat frame_out,bool prvic){
 			if(prvic){
 				sample_rects.push_back(Rect(reference_x[i], reference_y[j], 20, 20));
 			}
-			rectangle(frame_out,Rect(reference_x[i], reference_y[j], 20, 20),Scalar(255,0,0));
+			if(miska==false){
+				rectangle(frame_out,Rect(reference_x[i], reference_y[j], 20, 20),Scalar(255,0,0));
+			}
 		}
 	}
+	rectangle(frame_out,Rect(100,0,320,240),Scalar(0,255,0));
 	/*
 	cout << "izpisujem kvadrate" << endl;
 	for(int i=0;i<sample_rects.size();i++){
@@ -189,11 +191,9 @@ Mat mask_with_hist(Mat frame,Mat hist){
 	filter2D(mask,mask,-1,kernel,Point(-1,-1));
 	Mat t;
 	threshold(mask,t,150,255,THRESH_BINARY);
-
-	//imshow("pred erode",t);
+	
 	opening_operation(t,MORPH_OPEN,{15,15});
-	erode(t,t,Mat(),Point(-1,-1),5);
-	//imshow("po odpiranju THRESH",t);
+	//erode(t,t,Mat(),Point(-1,-1),6);
 	
 	Mat mt;
 	cvtColor(t,mt,COLOR_GRAY2BGR);	
@@ -203,7 +203,6 @@ Mat mask_with_hist(Mat frame,Mat hist){
 	//imshow("X",x);
 	//barvna slika z masko
 	//return frame;
-	
 	return t;
 }
 Mat get_hand_contour(Mat img){
@@ -265,8 +264,39 @@ Mat get_hand_contour(Mat img){
 
 	}
 	
-	mouse_x=valid_points[1].x;
-	mouse_y=valid_points[1].y;
+	//cout << "valid points: " << valid_points.size() << endl;
+	//320,240
+	if(valid_points.size()==1){
+		if(miska&&command.compare("xdotool mouseup 1")!=0){
+			command = "xdotool mouseup 1";
+			cout << "miska je spuscena...." << endl;
+			system(command.c_str());
+		}
+		mouse_x=valid_points[0].x;
+		mouse_y=valid_points[0].y;
+		if(mouse_x>100&&mouse_x<420&&mouse_y<240){
+			mouse_x=(mouse_x-100)*6;
+			mouse_x=1920-mouse_x;
+			mouse_y*=5;
+		}
+	}
+	if(valid_points.size()>=2){
+		mouse_x=valid_points[1].x;
+		mouse_y=valid_points[1].y;
+		if(mouse_x>100&&mouse_x<420&&mouse_y<240){
+			mouse_x=(mouse_x-100)*6;
+			mouse_x=1920-mouse_x;
+			mouse_y*=5;
+		}
+
+		if(miska&&command.compare("xdotool mouseup 1")!=0){
+				command = "xdotool mousedown 1";
+				cout << "miska pritisnjena..." << endl;
+				system(command.c_str());
+		}
+		system(command.c_str());
+	}
+	//cout << "mouse_x: " << mouse_x << " mouse_y: " << mouse_y << endl;
 	
 	for(int i=0;i<valid_points.size();i++){
 		//circle(contours_img,contours[biggest_contour_index][defects[i][0]],20,Scalar(0,0,255),1);
@@ -277,6 +307,7 @@ Mat get_hand_contour(Mat img){
 	
 	drawContours(contours_img, contours, biggest_contour_index, Scalar(255,0,0), 2, LINE_8, hierarchy, 0);
 	drawContours(contours_img, vector<vector<Point>> {hull_points}, 0, Scalar(0,0,255), 3, 8);
+	rectangle(contours_img,Rect(100,0,320,240),Scalar(0,255,0));
 
 	return contours_img;
 }
@@ -310,9 +341,6 @@ float inner_angle(float px1, float py1, float px2, float py2, float cx1, float c
  float Ax, Ay;
  float Bx, By;
  float Cx, Cy;
-
- //najblizja tocka C
- //printf("dist = %lf %lf\n", dist1, dist2);
 
  Cx = cx1;
  Cy = cy1;
